@@ -20,8 +20,7 @@ public class FetchUser {
 	public void setUp() {
 		
 		Jedis jedis = new Jedis("localhost");
-		jedis.hset("user:email:jori@foo.bar", "email", "jori@foo.bar");
-		jedis.hset("user:email:jori@foo.bar", "info", getUserInfo());
+		jedis.set("user:email:jori@foo.bar", getUserInfo());
 	}
 
 	@Test

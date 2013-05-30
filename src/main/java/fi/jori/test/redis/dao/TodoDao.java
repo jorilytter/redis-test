@@ -11,31 +11,42 @@ import fi.jori.test.redis.entity.TodoItem;
 
 public class TodoDao extends GenericDao {
 	
+	private static final String FIELD_TEXT = "text";
+	private static final String FIELD_CREATED = "created";
+	private static final String COLON = ":";
 	private static final String PREFIX = "todo:";
 	
 	public TodoItem createTodoItem(String email, String text) {
 		
 		String uid = UUID.randomUUID().toString();
+		String key = PREFIX+email+COLON+uid;
+		String time = currentTime();
 		
-		String key = PREFIX+email+":"+uid;
+		insert(key, FIELD_CREATED, time);
+		insert(key, FIELD_TEXT, text);
 		
-		long timeMs = new Date().getTime();
-		String time = String.valueOf(timeMs);
+		Map<String, String> data = fetchMap(key);
+		Long fetchedTime = Long.parseLong(data.get(FIELD_CREATED));
+		TodoItem item = initTodoItem(email, uid, data.get(FIELD_TEXT), fetchedTime);
 		
-		insert(key, "created", time);
-		insert(key, "text", text);
-		
-		Map<String, String> data = fetch(key);
-		
-		Long fetchedTime = Long.parseLong(data.get("created"));
-		
+		return item;
+	}
+
+	private TodoItem initTodoItem(String email, String uid, String text, Long fetchedTime) {
+
 		TodoItem item = new TodoItem();
 		item.setUid(uid);
 		item.setEmail(email);
 		item.setCreated(new Date(fetchedTime));
-		item.setText(data.get("text"));
-		
+		item.setText(text);
 		return item;
+	}
+
+	private String currentTime() {
+
+		long timeMs = new Date().getTime();
+		String time = String.valueOf(timeMs);
+		return time;
 	}
 
 	public List<TodoItem> findTodoItemsByEmail(String email) {
@@ -45,20 +56,21 @@ public class TodoDao extends GenericDao {
 		
 		for(String key : keys) {
 			
-			Map<String, String> data = fetch(key);
-			int index = key.lastIndexOf(":")+1;
-			String uid = key.substring(index);
-			Long fetchedTime = Long.parseLong(data.get("created"));
+			Map<String, String> data = fetchMap(key);
+			String uid = extractUid(key);
+			Long fetchedTime = Long.parseLong(data.get(FIELD_CREATED));
 			
-			TodoItem item = new TodoItem();
-			item.setUid(uid);
-			item.setEmail(email);
-			item.setCreated(new Date(fetchedTime));
-			item.setText(data.get("text"));
-			
+			TodoItem item = initTodoItem(email, uid, data.get(FIELD_TEXT), fetchedTime);
 			items.add(item);
 		}
 		return items;
+	}
+
+	private String extractUid(String key) {
+
+		int index = key.lastIndexOf(COLON)+1;
+		String uid = key.substring(index);
+		return uid;
 	}
 
 }
